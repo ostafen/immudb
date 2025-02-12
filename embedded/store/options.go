@@ -132,7 +132,7 @@ type Options struct {
 	CompressionLevel  int
 	EmbeddedValues    bool
 	PreallocFiles     bool
-
+	SkipPrecommitted  bool
 	// options below affect indexing
 	IndexOpts *IndexOptions
 
@@ -234,8 +234,8 @@ func DefaultOptions() *Options {
 		CompressionLevel:  DefaultCompressionLevel,
 		EmbeddedValues:    DefaultEmbeddedValues,
 		PreallocFiles:     DefaultPreallocFiles,
-
-		IndexOpts: DefaultIndexOptions(),
+		SkipPrecommitted:  false,
+		IndexOpts:         DefaultIndexOptions(),
 
 		AHTOpts: DefaultAHTOptions(),
 	}
@@ -576,6 +576,11 @@ func (opts *Options) WithIndexOptions(indexOptions *IndexOptions) *Options {
 
 func (opts *Options) WithAHTOptions(ahtOptions *AHTOptions) *Options {
 	opts.AHTOpts = ahtOptions
+	return opts
+}
+
+func (opts *Options) WithSkipPrecommittedTransactions(skip bool) *Options {
+	opts.SkipPrecommitted = true
 	return opts
 }
 
