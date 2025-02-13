@@ -438,6 +438,9 @@ func (idx *indexer) doIndexing() {
 	idx.metricsLastCommittedTrx.Set(float64(committedTxID))
 
 	start := time.Now()
+
+	idx.store.logger.Infof("MOSHE: %s started at: %s", idx.path, start.String())
+
 	for {
 		lastIndexedTx := idx.index.Ts()
 		idx.metricsLastIndexedTrx.Set(float64(lastIndexedTx))
