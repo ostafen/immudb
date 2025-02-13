@@ -181,8 +181,9 @@ func newIndexer(path string, store *ImmuStore, opts *Options) (*indexer, error) 
 	}
 
 	dbName := filepath.Base(store.path)
-	indexer.metricsLastIndexedTrx = metricsLastIndexedTrxId.WithLabelValues(dbName, path)
-	indexer.metricsLastCommittedTrx = metricsLastCommittedTrx.WithLabelValues(dbName, path)
+	idxName := filepath.Base(path)
+	indexer.metricsLastIndexedTrx = metricsLastIndexedTrxId.WithLabelValues(dbName, idxName)
+	indexer.metricsLastCommittedTrx = metricsLastCommittedTrx.WithLabelValues(dbName, idxName)
 
 	return indexer, nil
 }
