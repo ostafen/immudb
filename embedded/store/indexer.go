@@ -446,7 +446,7 @@ func (idx *indexer) doIndexing() {
 			idx.wHub.DoneUpto(lastIndexedTx)
 		}
 
-		if lastIndexedTx == committedTxID {
+		if lastIndexedTx >= committedTxID {
 			idx.store.logger.Infof("MOSHE: %s total indexing time: %s", idx.path, time.Since(start).String())
 		}
 
