@@ -1667,14 +1667,16 @@ func (t *TBtree) bulkInsert(kvts []*KVT) error {
 		return ErrIllegalArguments
 	}
 
-	entriesSize := estimateSize(kvts)
-	if t.bufferedDataSize > 0 && t.bufferedDataSize+entriesSize > t.maxBufferedDataSize {
-		_, _, err := t.flushTree(t.cleanupPercentage, false, false, "bulkInsert")
-		if err != nil {
-			return err
-		}
-	}
-	t.bufferedDataSize += entriesSize
+	/*
+		entriesSize := estimateSize(kvts)
+			if t.bufferedDataSize > 0 && t.bufferedDataSize+entriesSize > t.maxBufferedDataSize {
+				_, _, err := t.flushTree(t.cleanupPercentage, false, false, "bulkInsert")
+				if err != nil {
+					return err
+				}
+			}
+			t.bufferedDataSize += entriesSize
+	*/
 
 	currTs := t.root.ts()
 

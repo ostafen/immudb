@@ -568,7 +568,7 @@ func (idx *indexer) indexSince(txID uint64) error {
 	ctx, cancel := context.WithTimeout(context.Background(), idx.bulkPreparationTimeout)
 	defer cancel()
 
-	acquiredMem := 0
+	//acquiredMem := 0
 	bulkSize := 0
 	indexableEntries := 0
 
@@ -699,14 +699,14 @@ func (idx *indexer) indexSince(txID uint64) error {
 		}
 
 		if indexableEntries > 0 && txIndexedEntries > 0 {
-			size := estimateEntriesSize(idx._kvs[indexableEntries-txIndexedEntries : indexableEntries])
-			if !idx.store.memSemaphore.Acquire(uint64(size)) {
-				if acquiredMem == 0 {
-					return ErrWriteStalling
-				}
-				break
-			}
-			acquiredMem += size
+			//	size := estimateEntriesSize(idx._kvs[indexableEntries-txIndexedEntries : indexableEntries])
+			//	if !idx.store.memSemaphore.Acquire(uint64(size)) {
+			//		if acquiredMem == 0 {
+			//			return ErrWriteStalling
+			//		}
+			//		break
+			//	}
+			//	acquiredMem += size
 		}
 
 		bulkSize++
