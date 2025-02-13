@@ -437,12 +437,17 @@ func (idx *indexer) doIndexing() {
 	committedTxID := idx.store.LastCommittedTxID()
 	idx.metricsLastCommittedTrx.Set(float64(committedTxID))
 
+	start := time.Now()
 	for {
 		lastIndexedTx := idx.index.Ts()
 		idx.metricsLastIndexedTrx.Set(float64(lastIndexedTx))
 
 		if idx.wHub != nil {
 			idx.wHub.DoneUpto(lastIndexedTx)
+		}
+
+		if lastIndexedTx == committedTxID {
+			idx.store.logger.Infof("MOSHE: %s total indexing time: %s", idx.path, time.Since(start).String())
 		}
 
 		err := idx.store.commitWHub.WaitFor(idx.ctx, lastIndexedTx+1)
