@@ -55,7 +55,7 @@ var (
 		Help: "Highest timestamp of an entry stored in the tree",
 	}, []string{"index_id"})
 
-	metricsIndexedEntries = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	metricsIndexedEntries = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "immudb_btree_indexed_entries",
 		Help: "Total number of entries stored in the tree",
 	}, []string{"index_id"})
