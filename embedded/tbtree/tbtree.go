@@ -107,6 +107,8 @@ type TBTree struct {
 
 	metrics metrics.IndexMetrics
 
+	numInserts int
+
 	readDirFunc ReadDirFunc
 	appFactory  AppFactoryFunc
 	appRemove   AppRemoveFunc
@@ -536,6 +538,8 @@ func (t *TBTree) insert(e Entry) error {
 	t.mutated = true
 	t.metrics.IncIndexedEntriesTotal()
 
+	t.numInserts++
+
 	return nil
 }
 
@@ -568,6 +572,8 @@ func (t *TBTree) Advance(ts uint64, entryCount uint32) error {
 	if ts < t.Ts() {
 		return ErrInvalidTimestamp
 	}
+
+	fmt.Println("num inserts: ", t.numInserts)
 
 	// Locking the tree prevents flushers to observe inconsistent (Ts, IndexedEntryCount) pairs.
 	t.mtx.Lock()
@@ -1009,6 +1015,8 @@ func (t *TBTree) TryFlush() error {
 }
 
 func (t *TBTree) flushToTreeLog() error {
+	fmt.Println("num inserts: ", t.numInserts)
+
 	if !t.mutated {
 		t.logger.Infof("flushing not needed. exiting...")
 		return nil
