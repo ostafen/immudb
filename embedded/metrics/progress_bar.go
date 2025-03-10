@@ -1,6 +1,8 @@
 package metrics
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 type ProgressTracker interface {
 	Add(v float64)
@@ -13,6 +15,8 @@ type prometheusProgressTracker struct {
 }
 
 func NewPrometheusProgressTracker(maxValue float64, gauge prometheus.Gauge) ProgressTracker {
+	gauge.Set(0)
+
 	return &prometheusProgressTracker{
 		progress: gauge,
 		maxValue: maxValue,

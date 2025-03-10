@@ -554,13 +554,13 @@ func (t *TBTree) insert(e Entry) error {
 
 	if res.split {
 		t.nSplits++
-		t.allocatedPagesSinceLastFlush++
 		t.depth++
 
 		newRootNode, newRootID, err := t.wb.AllocInnerPage()
 		if err != nil {
 			return err
 		}
+		t.allocatedPagesSinceLastFlush++
 
 		_, err = newRootNode.InsertKey(res.sepKey(), res.splitPageID)
 		if err != nil {
@@ -601,6 +601,7 @@ func (t *TBTree) dupPage(pgID PageID, dst []byte) error {
 	}
 	defer t.pgBuf.Release(t.id, pgID)
 
+	t.allocatedPagesSinceLastFlush++
 	copy(dst, pg.Bytes())
 	return nil
 }

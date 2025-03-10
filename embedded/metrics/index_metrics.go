@@ -16,8 +16,6 @@ limitations under the License.
 package metrics
 
 import (
-	"strconv"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -63,10 +61,10 @@ var (
 		Help: "Total number of entries stored in the tree",
 	}, []string{"index_id"})
 
-	metricsIndexFlushProgress = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	metricsIndexLastFlushProgress = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "immudb_btree_flush_progress",
 		Help: "Total number of entries stored in the tree",
-	}, []string{"index_id", "ts"})
+	}, []string{"index_id"})
 )
 
 var _ IndexMetrics = &prometheusIndexMetrics{}
@@ -106,7 +104,7 @@ func (m *prometheusIndexMetrics) IncIndexedEntriesTotal() {
 }
 
 func (m *prometheusIndexMetrics) NewFlushProgressTracker(maxValue float64, ts uint64) ProgressTracker {
-	progress := metricsIndexFlushProgress.WithLabelValues(m.index, strconv.FormatUint(ts, 10))
+	progress := metricsIndexLastFlushProgress.WithLabelValues(m.index)
 
 	return NewPrometheusProgressTracker(maxValue, progress)
 }
