@@ -102,7 +102,7 @@ func TestSnapshotSet(t *testing.T) {
 			require.NoError(t, err)
 
 			tc.mainRange.forEach(func(n int) {
-				err := tree.InsertAdvance(Entry{
+				err := tree.Insert(Entry{
 					Ts:    uint64(1),
 					HOff:  OffsetNone,
 					Key:   binary.BigEndian.AppendUint32(nil, uint32(n)),

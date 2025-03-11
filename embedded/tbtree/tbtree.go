@@ -513,12 +513,12 @@ func validateEntry(e *Entry) error {
 	return nil
 }
 
-func (t *TBTree) Insert(e Entry) error {
-	return t.insert(e)
+func (t *TBTree) InsertAdvance(e Entry, upToTs uint64, entryCount uint32) error {
+	return t.insert(e, upToTs, entryCount)
 }
 
-func (t *TBTree) InsertAdvance(e Entry) error {
-	err := t.insert(e)
+func (t *TBTree) Insert(e Entry) error {
+	err := t.insert(e, e.Ts, 0)
 	if err == nil {
 		t.rootTs.Store(e.Ts)
 		t.metrics.SetTs(e.Ts)
@@ -526,7 +526,11 @@ func (t *TBTree) InsertAdvance(e Entry) error {
 	return err
 }
 
-func (t *TBTree) insert(e Entry) error {
+func (t *TBTree) insert(
+	e Entry,
+	advanceUpToTs uint64,
+	entryCount uint32,
+) error {
 	if err := validateEntry(&e); err != nil {
 		return err
 	}
@@ -576,6 +580,9 @@ func (t *TBTree) insert(e Entry) error {
 
 	t.mutated = true
 	t.metrics.IncIndexedEntriesTotal()
+
+	t.rootTs.Store(advanceUpToTs)
+	t.indexedEntryCount.Store(entryCount)
 
 	return nil
 }

@@ -61,13 +61,17 @@ func (idx *index) mapKey(key []byte, valReader io.Reader) ([]byte, error) {
 	return idx.spec.SourceEntryMapper(key, valReader)
 }
 
-func (idx *index) Insert(e tbtree.Entry) error {
+func (idx *index) InsertAdvance(
+	e tbtree.Entry,
+	upToTs uint64,
+	entryCount uint32,
+) error {
 	if !idx.mtx.TryRLock() {
 		return tbtree.ErrTreeLocked
 	}
 	defer idx.mtx.RUnlock()
 
-	return idx.tree.Insert(e)
+	return idx.tree.InsertAdvance(e, upToTs, entryCount)
 }
 
 func (idx *index) Get(key []byte) (value []byte, ts uint64, hc uint64, err error) {
