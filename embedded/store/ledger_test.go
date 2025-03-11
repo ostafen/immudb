@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -211,6 +212,80 @@ func TestLedgerConcurrentCommits(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestLedgerCloseBeforeIndexingIsUpToDate(t *testing.T) {
+	maxConcurrency := 1000
+
+	opts := DefaultOptions().
+		WithSynced(false).
+		WithMaxConcurrency(maxConcurrency).
+		WithMaxActiveTransactions(maxConcurrency)
+
+	st, err := Open(t.TempDir(), opts)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		st.Close()
+	})
+
+	ledger, err := st.OpenLedger("default")
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(maxConcurrency)
+
+	var n atomic.Uint32
+	for i := 0; i < maxConcurrency; i++ {
+		go func() {
+			defer wg.Done()
+
+			tx, err := ledger.NewTx(context.Background(), DefaultTxOptions().WithMode(WriteOnlyTx))
+			require.NoError(t, err)
+
+			var key [4]byte
+			binary.BigEndian.PutUint32(key[:], n.Add(1))
+
+			err = tx.Set(key[:], nil, key[:])
+			require.NoError(t, err)
+
+			_, err = tx.AsyncCommit(context.Background())
+			require.NoError(t, err)
+		}()
+	}
+	wg.Wait()
+
+	err = ledger.Close()
+	require.NoError(t, err)
+
+	ledger, err = st.OpenLedger("default")
+	require.NoError(t, err)
+	defer ledger.Close()
+
+	err = ledger.WaitForIndexingUpto(context.Background(), uint64(maxConcurrency))
+	require.NoError(t, err)
+
+	tx, err := ledger.NewTx(context.Background(), DefaultTxOptions().WithMode(ReadOnlyTx))
+	require.NoError(t, err)
+
+	reader, err := tx.NewKeyReader(KeyReaderSpec{})
+	require.NoError(t, err)
+
+	m := 0
+	for {
+		key, _, err := reader.Read(context.Background())
+		if errors.Is(err, ErrNoMoreEntries) {
+			break
+		}
+		require.NoError(t, err)
+
+		var expectedKey [4]byte
+		binary.BigEndian.PutUint32(expectedKey[:], uint32(m+1))
+
+		require.Equal(t, expectedKey[:], key)
+		m++
+	}
+	require.Equal(t, uint32(m), n.Load())
 }
 
 func TestLedgerConcurrentCommitsWithEmbeddedValues(t *testing.T) {

@@ -447,6 +447,7 @@ func (r *storeKeyReader) Read(ctx context.Context) ([]byte, ValueRef, error) {
 			r.skipped++
 			continue
 		}
+
 		return e.Key, valRef, nil
 	}
 }

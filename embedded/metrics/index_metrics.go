@@ -63,7 +63,7 @@ var (
 
 	metricsIndexLastFlushProgress = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "immudb_btree_flush_progress",
-		Help: "Total number of entries stored in the tree",
+		Help: "Progress of last flush operation",
 	}, []string{"index_id"})
 )
 

@@ -262,6 +262,7 @@ func (indexer *Indexer) indexEntries(idx *index, tx *Tx) (uint32, error) {
 				sourceKey,
 				indexEntry.Key,
 				tx.header.ID,
+				nEntry,
 			); err != nil {
 				return 0, err
 			}
@@ -280,6 +281,7 @@ func (indexer *Indexer) markPrevEntryAsDeleted(
 	sourceKey []byte,
 	targetKey []byte,
 	txID uint64,
+	nEntry uint32,
 ) error {
 	srcIdx := idx.srcIdx
 
@@ -329,8 +331,7 @@ func (indexer *Indexer) markPrevEntryAsDeleted(
 		return fmt.Errorf("%w: the target entry mapper has not generated a key with the specified target prefix", ErrIllegalArguments)
 	}
 
-	// TODO: should use an insert without advance
-	err = idx.InsertAdvance(e, txID-1, 0)
+	err = idx.InsertAdvance(e, txID-1, nEntry)
 	if errors.Is(err, tbtree.ErrInvalidTimestamp) {
 		// the key was already indexed in a previous attempt
 		return nil
