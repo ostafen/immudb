@@ -243,11 +243,13 @@ func TestLedgerCloseBeforeIndexingIsUpToDate(t *testing.T) {
 			tx, err := ledger.NewTx(context.Background(), DefaultTxOptions().WithMode(WriteOnlyTx))
 			require.NoError(t, err)
 
-			var key [4]byte
-			binary.BigEndian.PutUint32(key[:], n.Add(1))
+			for i := 0; i < 1+rand.Intn(10); i++ {
+				var key [4]byte
+				binary.BigEndian.PutUint32(key[:], n.Add(1))
 
-			err = tx.Set(key[:], nil, key[:])
-			require.NoError(t, err)
+				err = tx.Set(key[:], nil, key[:])
+				require.NoError(t, err)
+			}
 
 			_, err = tx.AsyncCommit(context.Background())
 			require.NoError(t, err)
