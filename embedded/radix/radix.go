@@ -76,7 +76,7 @@ func (t *Tree) Get(key []byte) ([]byte, uint64, error) {
 
 func findNode(nd *node, key []byte) *node {
 	lcp := longestCommonPrefix(nd.prefix, key)
-	if nd.isLeaf() && lcp == len(key) {
+	if nd.isLeaf() && len(key) == len(nd.prefix) && lcp == len(key) {
 		return nd
 	}
 
