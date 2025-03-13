@@ -144,7 +144,7 @@ func (m *IndexerManager) WaitForIndexingUpTo(ctx context.Context, ledgerID Ledge
 func createIndexers(opts *Options, indexingWHub *watchers.WatchersHub) ([]Indexer, error) {
 	swb := tbtree.NewSharedWriteBuffer(
 		opts.IndexOpts.SharedWriteBufferSize,
-		opts.IndexOpts.WriteBufferChunkSize,
+		opts.IndexOpts.SharedWriteBufferChunkSize,
 	)
 
 	indexers := make([]Indexer, opts.IndexOpts.NumIndexers)

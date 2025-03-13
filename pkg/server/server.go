@@ -466,11 +466,12 @@ func (s *ImmuServer) resetAdminPassword(ctx context.Context, adminPassword strin
 }
 
 func (s *ImmuServer) initStore(path string) error {
+	opts := getStoreOptionsFromConfig(s.Options.Config)
+
 	storeOpts := s.storeOptionsForDB(
 		"",
 		s.remoteStorage,
-		store.DefaultOptions().
-			WithMultiIndexing(true),
+		opts.WithMultiIndexing(true),
 	)
 
 	st, err := store.Open(

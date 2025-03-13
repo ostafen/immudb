@@ -185,7 +185,7 @@ func TestValidOptions(t *testing.T) {
 	require.Equal(t, 4096*2, indexOpts.WithFlushBufferSize(4096*2).FlushBufferSize)
 	require.Equal(t, float32(10), indexOpts.WithCleanupPercentage(10).CleanupPercentage)
 	require.Equal(t, 10*1024*1024, indexOpts.WithSharedWriteBufferSize(10*1024*1024).SharedWriteBufferSize)
-	require.Equal(t, 1024*1024, indexOpts.WithWriteBufferChunkSize(1024*1024).WriteBufferChunkSize)
+	require.Equal(t, 1024*1024, indexOpts.WithSharedWriteBufferChunkSize(1024*1024).SharedWriteBufferChunkSize)
 	require.Equal(t, 1024*1024, indexOpts.WithMinWriteBufferSize(1024*1024).MinWriteBufferSize)
 	require.Equal(t, 8*1024*1024, indexOpts.WithMaxWriteBufferSize(8*1024*1024).MaxWriteBufferSize)
 

@@ -12,9 +12,8 @@ type IndexOptions struct {
 
 	PageBufferSize int
 
-	SharedWriteBufferSize int
-
-	WriteBufferChunkSize int
+	SharedWriteBufferSize      int
+	SharedWriteBufferChunkSize int
 
 	BackpressureMinDelay time.Duration
 
@@ -103,8 +102,8 @@ func (opts *IndexOptions) WithSharedWriteBufferSize(size int) *IndexOptions {
 	return opts
 }
 
-func (opts *IndexOptions) WithWriteBufferChunkSize(size int) *IndexOptions {
-	opts.WriteBufferChunkSize = size
+func (opts *IndexOptions) WithSharedWriteBufferChunkSize(size int) *IndexOptions {
+	opts.SharedWriteBufferChunkSize = size
 	return opts
 }
 

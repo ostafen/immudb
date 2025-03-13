@@ -208,14 +208,14 @@ func DefaultOptions() *Options {
 
 func DefaultIndexOptions() *IndexOptions {
 	return &IndexOptions{
-		NumIndexers:           DefaultNumIndexers,
-		MinWriteBufferSize:    DefaultMinWriteBufferSize,
-		MaxWriteBufferSize:    DefaultMaxWriteBufferSize,
-		PageBufferSize:        DefaultPageBufferSize,
-		SharedWriteBufferSize: DefaultSharedWriteBufferSize,
-		WriteBufferChunkSize:  DefaultWriteBufferChunkSize,
-		BackpressureMinDelay:  DefaultBackpressureMinDelay,
-		BackpressureMaxDelay:  DefaultBackpressureMaxDelay,
+		NumIndexers:                DefaultNumIndexers,
+		MinWriteBufferSize:         DefaultMinWriteBufferSize,
+		MaxWriteBufferSize:         DefaultMaxWriteBufferSize,
+		PageBufferSize:             DefaultPageBufferSize,
+		SharedWriteBufferSize:      DefaultSharedWriteBufferSize,
+		SharedWriteBufferChunkSize: DefaultWriteBufferChunkSize,
+		BackpressureMinDelay:       DefaultBackpressureMinDelay,
+		BackpressureMaxDelay:       DefaultBackpressureMaxDelay,
 
 		SyncThld:                 tbtree.DefaultSyncThld,
 		FlushBufferSize:          tbtree.DefaultFlushBufferSize,
@@ -364,11 +364,11 @@ func (opts *IndexOptions) Validate() error {
 		return fmt.Errorf("%w: invalid index option HistoryLogMaxOpenedFiles", ErrInvalidOptions)
 	}
 
-	if opts.WriteBufferChunkSize == 0 {
+	if opts.SharedWriteBufferChunkSize == 0 {
 		return fmt.Errorf("%w: write buffer chunk size cannot be zero", ErrInvalidOptions)
 	}
 
-	if opts.WriteBufferChunkSize%tbtree.PageSize != 0 {
+	if opts.SharedWriteBufferChunkSize%tbtree.PageSize != 0 {
 		return fmt.Errorf("%w: write buffer chunk size must be a multiple of the page size", ErrInvalidOptions)
 	}
 
@@ -376,7 +376,7 @@ func (opts *IndexOptions) Validate() error {
 		return fmt.Errorf("%w: shared write buffer size cannot be zero", ErrInvalidOptions)
 	}
 
-	if opts.SharedWriteBufferSize%opts.WriteBufferChunkSize != 0 {
+	if opts.SharedWriteBufferSize%opts.SharedWriteBufferChunkSize != 0 {
 		return fmt.Errorf("%w: shared write buffer size must be a multiple of the chunk size", ErrInvalidOptions)
 	}
 
@@ -408,7 +408,7 @@ func (opts *IndexOptions) Validate() error {
 		return fmt.Errorf("max backpressure delay cannot be less than min delay")
 	}
 
-	numChunks := opts.SharedWriteBufferSize / opts.WriteBufferChunkSize
+	numChunks := opts.SharedWriteBufferSize / opts.SharedWriteBufferChunkSize
 	if numChunks < opts.NumIndexers {
 		return fmt.Errorf("shared write buffer should have at least %d chunks", opts.NumIndexers)
 	}

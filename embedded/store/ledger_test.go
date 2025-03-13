@@ -1855,7 +1855,7 @@ func TestLedgerHistoricalValues(t *testing.T) {
 		WithIndexOptions(
 			DefaultIndexOptions().
 				WithNumIndexers(1).
-				WithWriteBufferChunkSize(size).
+				WithSharedWriteBufferChunkSize(size).
 				WithSharedWriteBufferSize(size).
 				WithMaxWriteBufferSize(size).
 				WithMinWriteBufferSize(size),
