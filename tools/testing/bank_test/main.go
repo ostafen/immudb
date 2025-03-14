@@ -43,7 +43,7 @@ func main() {
 		ledger, err := st.OpenLedger(ledgerName)
 		exitOnErr(err)
 
-		defer func(name string) {
+		defer func(name string, ledger *store.Ledger) {
 			fmt.Printf("closing ledger %s\n", name)
 
 			err := ledger.Close()
@@ -52,7 +52,7 @@ func main() {
 			} else {
 				fmt.Printf("ledger %s successfully closed\n", name)
 			}
-		}(ledgerName)
+		}(ledgerName, ledger)
 
 		createAccounts(ledger, *numAccounts, *initialBalance)
 		err = ledger.WaitForIndexingUpto(context.Background(), 1)
