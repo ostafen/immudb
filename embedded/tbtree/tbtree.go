@@ -348,6 +348,9 @@ func (t *TBTree) recoverRootPage(minTs uint64) error {
 	t.numPages.Store(commitEntry.TotalPages)
 	t.stalePages.Store(commitEntry.StalePages)
 
+	t.metrics.SetStalePages(int(commitEntry.StalePages))
+	t.metrics.SetTotalPages(int(commitEntry.TotalPages))
+
 	return nil
 }
 
