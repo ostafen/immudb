@@ -21,9 +21,10 @@ func exitOnErr(err error) {
 }
 
 func main() {
+	numLedgers := flag.Int("num-ledgers", 1, "number of ledgers")
 	numAccounts := flag.Int("num-accounts", 100, "number of accounts")
-	balance := flag.Int("balance", 1000, "initial account balance")
-	duration := flag.Duration("duraton", 10*time.Minute, "test duration")
+	initialBalance := flag.Int("balance", 1000, "initial account balance")
+	duration := flag.Duration("duration", 10*time.Minute, "test duration")
 
 	flag.Parse()
 
@@ -32,28 +33,74 @@ func main() {
 	exitOnErr(err)
 	defer st.Close()
 
-	ledger, err := st.OpenLedger("default")
-	exitOnErr(err)
-	defer ledger.Close()
+	ctx, cancel := context.WithCancel(context.Background())
 
-	createAccounts(ledger, *numAccounts, *balance)
-	ledger.WaitForIndexingUpto(context.Background(), 1)
+	var wg sync.WaitGroup
+	wg.Add(2 * *numLedgers)
 
+	for i := 0; i < *numLedgers; i++ {
+		ledgerName := fmt.Sprintf("ledger-%d", i)
+		ledger, err := st.OpenLedger(ledgerName)
+		exitOnErr(err)
+
+		defer func(name string) {
+			fmt.Printf("closing ledger %s\n", name)
+
+			err := ledger.Close()
+			if err != nil {
+				fmt.Printf("%s: while closing ledger\n", err.Error())
+			} else {
+				fmt.Printf("ledger %s successfully closed\n", name)
+			}
+		}(ledgerName)
+
+		createAccounts(ledger, *numAccounts, *initialBalance)
+		err = ledger.WaitForIndexingUpto(context.Background(), 1)
+		exitOnErr(err)
+
+		startLedgerSimulation(
+			ctx, &wg, ledger, *numAccounts, *initialBalance)
+	}
+
+	time.Sleep(*duration)
+
+	cancel()
+
+	wg.Wait()
+}
+
+func startLedgerSimulation(
+	ctx context.Context,
+	wg *sync.WaitGroup,
+	ledger *store.Ledger,
+	numAccounts,
+	initialBalance int,
+) {
 	go func() {
+		defer wg.Done()
+
 		for {
-			checkBalances(ledger, *numAccounts*(*balance))
+			if err := ctx.Err(); err != nil {
+				break
+			}
+
+			checkBalances(ledger, numAccounts*initialBalance)
 
 			time.Sleep(time.Millisecond * 10)
 		}
 	}()
 
 	go func() {
+		defer wg.Done()
+
 		for {
-			makeTransfers(ledger, *numAccounts)
+			if err := ctx.Err(); err != nil {
+				break
+			}
+
+			makeTransfers(ledger, numAccounts)
 		}
 	}()
-
-	time.Sleep(*duration)
 }
 
 func checkBalances(ledger *store.Ledger, totalBalance int) {
