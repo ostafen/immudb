@@ -109,7 +109,7 @@ func startLedgerBankTransfer(
 	}()
 }
 
-func checkBalances(ledger *store.Ledger, totalBalance int) {
+func checkBalances(ledger *store.Ledger, expectedTotalBalance int) {
 	tx, err := ledger.NewTx(context.Background(), store.DefaultTxOptions().WithMode(store.ReadOnlyTx))
 	exitOnErr(err)
 	defer tx.Cancel()
@@ -119,7 +119,7 @@ func checkBalances(ledger *store.Ledger, totalBalance int) {
 
 	defer reader.Close()
 
-	balance := uint64(0)
+	totalBalance := uint64(0)
 	for {
 		_, val, err := reader.Read(context.Background())
 		if errors.Is(err, store.ErrNoMoreEntries) {
@@ -129,11 +129,11 @@ func checkBalances(ledger *store.Ledger, totalBalance int) {
 		value, err := ledger.Resolve(val)
 		exitOnErr(err)
 
-		balance += binary.BigEndian.Uint64(value)
+		totalBalance += binary.BigEndian.Uint64(value)
 	}
 
-	if balance != uint64(totalBalance) {
-		panic(fmt.Sprintf("total balance should be %d, but is %d", balance, totalBalance))
+	if totalBalance != uint64(expectedTotalBalance) {
+		panic(fmt.Sprintf("total balance should be %d, but is %d", totalBalance, expectedTotalBalance))
 	}
 }
 
@@ -145,43 +145,47 @@ func makeTransfers(ledger *store.Ledger, numAccounts int) {
 		go func() {
 			defer wg.Done()
 
-			src := rand.Intn(numAccounts)
-			dst := rand.Intn(numAccounts)
-
-			srcAccount := getAccountKey(src)
-			dstAccount := getAccountKey(dst)
-
-			tx, err := ledger.NewTx(context.Background(), store.DefaultTxOptions())
-			exitOnErr(err)
-			defer tx.Cancel()
-
-			vref, err := tx.Get(context.Background(), srcAccount)
-			exitOnErr(err)
-
-			value, err := ledger.Resolve(vref)
-			exitOnErr(err)
-
-			amount := uint64(1 + rand.Intn(10))
-
-			err = tx.Set(srcAccount, nil, addValue(value, -int64(amount)))
-			exitOnErr(err)
-
-			vref, err = tx.Get(context.Background(), dstAccount)
-			exitOnErr(err)
-
-			value, err = ledger.Resolve(vref)
-			exitOnErr(err)
-
-			err = tx.Set(dstAccount, nil, addValue(value, int64(amount)))
-			exitOnErr(err)
-
-			_, err = tx.Commit(context.Background())
-			if !errors.Is(err, store.ErrTxReadConflict) {
-				exitOnErr(err)
-			}
+			makeTransfer(ledger, numAccounts)
 		}()
 	}
 	wg.Wait()
+}
+
+func makeTransfer(ledger *store.Ledger, numAccounts int) {
+	src := rand.Intn(numAccounts)
+	dst := rand.Intn(numAccounts)
+
+	srcAccount := getAccountKey(src)
+	dstAccount := getAccountKey(dst)
+
+	tx, err := ledger.NewTx(context.Background(), store.DefaultTxOptions())
+	exitOnErr(err)
+	defer tx.Cancel()
+
+	vref, err := tx.Get(context.Background(), srcAccount)
+	exitOnErr(err)
+
+	value, err := ledger.Resolve(vref)
+	exitOnErr(err)
+
+	amount := uint64(1 + rand.Intn(10))
+
+	err = tx.Set(srcAccount, nil, addValue(value, -int64(amount)))
+	exitOnErr(err)
+
+	vref, err = tx.Get(context.Background(), dstAccount)
+	exitOnErr(err)
+
+	value, err = ledger.Resolve(vref)
+	exitOnErr(err)
+
+	err = tx.Set(dstAccount, nil, addValue(value, int64(amount)))
+	exitOnErr(err)
+
+	_, err = tx.Commit(context.Background())
+	if !errors.Is(err, store.ErrTxReadConflict) {
+		exitOnErr(err)
+	}
 }
 
 func createAccounts(ledger *store.Ledger, n int, initialBalance int) {
