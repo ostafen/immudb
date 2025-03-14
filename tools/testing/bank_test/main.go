@@ -28,7 +28,9 @@ func main() {
 
 	flag.Parse()
 
-	indexOpts := store.DefaultIndexOptions().WithMaxActiveSnapshots(*numAccounts + 1)
+	indexOpts := store.DefaultIndexOptions().
+		WithMaxActiveSnapshots(*numAccounts + 1).WithNumIndexers(1)
+
 	st, err := store.Open(os.TempDir(), store.DefaultOptions().WithMaxConcurrency(*numAccounts).WithIndexOptions(indexOpts))
 	exitOnErr(err)
 	defer st.Close()
@@ -58,20 +60,22 @@ func main() {
 		err = ledger.WaitForIndexingUpto(context.Background(), 1)
 		exitOnErr(err)
 
-		startLedgerSimulation(
+		startLedgerBankTransfer(
 			ctx, &wg, ledger, *numAccounts, *initialBalance)
 	}
 
 	time.Sleep(*duration)
 
-	fmt.Println("exiting from test...")
+	fmt.Println("stopping test...")
 
 	cancel()
 
 	wg.Wait()
+
+	fmt.Println("test stopped succesfully. Exiting...")
 }
 
-func startLedgerSimulation(
+func startLedgerBankTransfer(
 	ctx context.Context,
 	wg *sync.WaitGroup,
 	ledger *store.Ledger,
@@ -82,19 +86,13 @@ func startLedgerSimulation(
 		defer wg.Done()
 
 		for {
-			fmt.Printf("ledger %s: checking balances\n", ledger.Path())
-
 			if err := ctx.Err(); err != nil {
-				fmt.Printf("ledger %s: exit\n", ledger.Path())
-
 				break
 			}
 
 			checkBalances(ledger, numAccounts*initialBalance)
 
 			time.Sleep(time.Millisecond * 10)
-
-			fmt.Printf("ledger %s: checking done\n", ledger.Path())
 		}
 	}()
 
@@ -103,16 +101,10 @@ func startLedgerSimulation(
 
 		for {
 			if err := ctx.Err(); err != nil {
-				fmt.Printf("ledger %s: exit make transfers\n", ledger.Path())
-
 				break
 			}
 
-			fmt.Printf("ledger %s: make transfers\n", ledger.Path())
-
 			makeTransfers(ledger, numAccounts)
-
-			fmt.Printf("ledger %s: make transfers done\n", ledger.Path())
 		}
 	}()
 }
