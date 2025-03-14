@@ -386,8 +386,10 @@ func (indexer *Indexer) tryFlushIndexes() (bool, error) {
 
 		err := e.index.tree.TryFlush()
 		if errors.Is(err, tbtree.ErrTreeLocked) {
+			indexer.queue.PushBack(e)
 			continue
 		} else if err != nil {
+			indexer.queue.PushBack(e)
 			return false, err
 		} else {
 			nFlushed++
