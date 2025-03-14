@@ -140,9 +140,9 @@ func (indexer *Indexer) tryIndexNext() (bool, error) {
 	push := true
 	defer func() {
 		if push {
-			indexer.logger.Infof("discarding index %s", idx.path)
-
 			indexer.pushIndex(idx, false)
+		} else {
+			indexer.logger.Infof("discarding index %s", idx.path)
 		}
 	}()
 
@@ -196,6 +196,9 @@ func (indexer *Indexer) popIndex() *index {
 	defer indexer.mtx.Unlock()
 
 	numIndexes := indexer.queue.Len()
+
+	indexer.logger.Infof("num indexes is %d", numIndexes)
+
 	for n := 0; n < numIndexes; n++ {
 		e, ok := indexer.queue.PopFront()
 		if !ok {
@@ -205,8 +208,6 @@ func (indexer *Indexer) popIndex() *index {
 		if e.index.IndexingLag() > 0 {
 			return e.index
 		}
-
-		indexer.logger.Infof("%s has zero lag", e.index.path)
 
 		indexer.queue.PushBack(e)
 	}
