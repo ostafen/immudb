@@ -64,6 +64,8 @@ func main() {
 
 	time.Sleep(*duration)
 
+	fmt.Println("exiting from test...")
+
 	cancel()
 
 	wg.Wait()
@@ -80,13 +82,19 @@ func startLedgerSimulation(
 		defer wg.Done()
 
 		for {
+			fmt.Printf("ledger %s: checking balances\n", ledger.Path())
+
 			if err := ctx.Err(); err != nil {
+				fmt.Printf("ledger %s: exit\n", ledger.Path())
+
 				break
 			}
 
 			checkBalances(ledger, numAccounts*initialBalance)
 
 			time.Sleep(time.Millisecond * 10)
+
+			fmt.Printf("ledger %s: checking done\n", ledger.Path())
 		}
 	}()
 
@@ -95,10 +103,16 @@ func startLedgerSimulation(
 
 		for {
 			if err := ctx.Err(); err != nil {
+				fmt.Printf("ledger %s: exit make transfers\n", ledger.Path())
+
 				break
 			}
 
+			fmt.Printf("ledger %s: make transfers\n", ledger.Path())
+
 			makeTransfers(ledger, numAccounts)
+
+			fmt.Printf("ledger %s: make transfers done\n", ledger.Path())
 		}
 	}()
 }
