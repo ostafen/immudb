@@ -105,6 +105,7 @@ type TBTree struct {
 	readOnly                 bool
 	treeLogMaxOpenedFiles    int
 	historyLogMaxOpenedFiles int
+	snapshotRenewalPeriod    time.Duration
 
 	compactionThld float32
 	compacting     atomic.Bool
@@ -223,6 +224,7 @@ func OpenWith(
 		readOnly:                 opts.readOnly,
 		treeLogMaxOpenedFiles:    opts.treeLogMaxOpenedFiles,
 		historyLogMaxOpenedFiles: opts.historyLogMaxOpenedFiles,
+		snapshotRenewalPeriod:    opts.snapshotRenewalPeriod,
 		metrics:                  metrics.NewPrometheusIndexMetrics(path),
 		appFactory:               opts.appFactory,
 		appRemove:                opts.appRemove,
@@ -1392,7 +1394,7 @@ func (t *TBTree) StalePagePercentage() float32 {
 }
 
 func (t *TBTree) SnapshotAtTs(ctx context.Context, ts uint64) (Snapshot, error) {
-	snapRootID, snapTs, err := t.ensureLatestSnapshotContainsTs(ts, 0)
+	snapRootID, snapTs, err := t.ensureLatestSnapshotContainsTs(ts, t.snapshotRenewalPeriod)
 	if err != nil {
 		return nil, err
 	}

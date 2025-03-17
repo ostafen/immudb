@@ -221,7 +221,7 @@ func DefaultIndexOptions() *IndexOptions {
 		FlushBufferSize:          tbtree.DefaultFlushBufferSize,
 		CleanupPercentage:        tbtree.DefaultCleanUpPercentage,
 		MaxActiveSnapshots:       tbtree.DefaultMaxActiveSnapshots,
-		RenewSnapRootAfter:       tbtree.DefaultRenewSnapRootAfter,
+		RenewSnapRootAfter:       tbtree.DefaultSnapshotRenewalPeriod,
 		CompactionThld:           tbtree.DefaultCompactionThld,
 		DelayDuringCompaction:    0,
 		NodesLogMaxOpenedFiles:   tbtree.DefaultNodesLogMaxOpenedFiles,

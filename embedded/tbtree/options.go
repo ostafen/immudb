@@ -36,8 +36,8 @@ const (
 	DefaultFileSize = 1 << 26 // 64Mb
 	DefaultFileMode = os.FileMode(0755)
 
-	DefaultMaxActiveSnapshots = 100
-	DefaultRenewSnapRootAfter = time.Duration(1000) * time.Millisecond
+	DefaultMaxActiveSnapshots    = 100
+	DefaultSnapshotRenewalPeriod = time.Duration(1000) * time.Millisecond
 
 	DefaultAppendableWriteBufferSize = 4096
 
@@ -74,6 +74,8 @@ type Options struct {
 	historyLogMaxOpenedFiles int
 	commitLogMaxOpenedFiles  int
 
+	snapshotRenewalPeriod time.Duration
+
 	// options below are only set during initialization and stored as metadata
 	fileSize int
 
@@ -86,7 +88,7 @@ func DefaultOptions() *Options {
 	return &Options{
 		logger:                   logger.NewMemoryLogger(),
 		maxActiveSnapshots:       DefaultMaxActiveSnapshots,
-		renewSnapRootAfter:       DefaultRenewSnapRootAfter,
+		renewSnapRootAfter:       DefaultSnapshotRenewalPeriod,
 		fileMode:                 DefaultFileMode,
 		readOnly:                 false,
 		syncThld:                 DefaultSyncThld,
@@ -95,6 +97,7 @@ func DefaultOptions() *Options {
 		treeLogMaxOpenedFiles:    DefaultNodesLogMaxOpenedFiles,
 		historyLogMaxOpenedFiles: DefaultHistoryLogMaxOpenedFiles,
 		commitLogMaxOpenedFiles:  DefaultCommitLogMaxOpenedFiles,
+		snapshotRenewalPeriod:    DefaultSnapshotRenewalPeriod,
 		fileSize:                 DefaultFileSize,
 		appFactory:               defaultAppFactory,
 		appRemove:                defaultAppRemove,
