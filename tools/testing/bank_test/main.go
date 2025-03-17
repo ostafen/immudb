@@ -90,7 +90,7 @@ func startLedgerBankTransfer(
 				break
 			}
 
-			checkBalances(ledger, numAccounts*initialBalance)
+			checkBalances(ledger, numAccounts, numAccounts*initialBalance)
 
 			time.Sleep(time.Millisecond * 10)
 		}
@@ -109,7 +109,7 @@ func startLedgerBankTransfer(
 	}()
 }
 
-func checkBalances(ledger *store.Ledger, expectedTotalBalance int) {
+func checkBalances(ledger *store.Ledger, numAccounts, expectedTotalBalance int) {
 	tx, err := ledger.NewTx(context.Background(), store.DefaultTxOptions().WithMode(store.ReadOnlyTx))
 	exitOnErr(err)
 	defer tx.Cancel()
@@ -119,6 +119,7 @@ func checkBalances(ledger *store.Ledger, expectedTotalBalance int) {
 
 	defer reader.Close()
 
+	n := 0
 	totalBalance := uint64(0)
 	for {
 		_, val, err := reader.Read(context.Background())
@@ -130,10 +131,15 @@ func checkBalances(ledger *store.Ledger, expectedTotalBalance int) {
 		exitOnErr(err)
 
 		totalBalance += binary.BigEndian.Uint64(value)
+		n++
+	}
+
+	if numAccounts != n {
+		panic(fmt.Sprintf("num accounts should be %d, but is %d", numAccounts, n))
 	}
 
 	if totalBalance != uint64(expectedTotalBalance) {
-		panic(fmt.Sprintf("total balance should be %d, but is %d", totalBalance, expectedTotalBalance))
+		panic(fmt.Sprintf("total balance should be %d, but is %d", expectedTotalBalance, totalBalance))
 	}
 }
 
@@ -214,7 +220,7 @@ func addValue(v []byte, x int64) []byte {
 
 	var buf [8]byte
 
-	newBalance := int64(balance) + int64(x)
+	newBalance := int64(balance) + x
 	binary.BigEndian.PutUint64(buf[:], uint64(newBalance))
 
 	return buf[:]
