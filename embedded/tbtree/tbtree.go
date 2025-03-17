@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/codenotary/immudb/embedded/appendable"
 	"github.com/codenotary/immudb/embedded/appendable/multiapp"
@@ -1387,7 +1388,7 @@ func (t *TBTree) StalePagePercentage() float32 {
 }
 
 func (t *TBTree) SnapshotAtTs(ctx context.Context, ts uint64) (Snapshot, error) {
-	snapRootID, snapTs, err := t.ensureLatestSnapshotContainsTs(ctx, ts)
+	snapRootID, snapTs, err := t.ensureLatestSnapshotContainsTs(ts)
 	if err != nil {
 		return nil, err
 	}
@@ -1403,8 +1404,8 @@ func (t *TBTree) SnapshotAtTs(ctx context.Context, ts uint64) (Snapshot, error) 
 	)
 }
 
-func (t *TBTree) SnapshotMustIncludeTs(ctx context.Context, ts uint64) (Snapshot, error) {
-	snapRootID, snapTs, err := t.ensureLatestSnapshotContainsTs(ctx, ts)
+func (t *TBTree) SnapshotMustIncludeTsWithRenewalPeriod(ctx context.Context, ts uint64, renewal time.Duration) (Snapshot, error) {
+	snapRootID, snapTs, err := t.ensureLatestSnapshotContainsTs(ts)
 	if err != nil {
 		return nil, err
 	}
@@ -1415,10 +1416,7 @@ func (t *TBTree) SnapshotMustIncludeTs(ctx context.Context, ts uint64) (Snapshot
 	)
 }
 
-func (t *TBTree) ensureLatestSnapshotContainsTs(
-	ctx context.Context,
-	ts uint64,
-) (PageID, uint64, error) {
+func (t *TBTree) ensureLatestSnapshotContainsTs(ts uint64) (PageID, uint64, error) {
 	t.mtx.Lock()
 	defer t.mtx.Unlock()
 
