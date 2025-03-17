@@ -99,10 +99,12 @@ type TBTree struct {
 	syncThld      int
 	unsyncedBytes atomic.Uint32
 
-	fileSize           int
-	fileMode           os.FileMode
-	appWriteBufferSize int
-	readOnly           bool
+	fileSize                 int
+	fileMode                 os.FileMode
+	appWriteBufferSize       int
+	readOnly                 bool
+	treeLogMaxOpenedFiles    int
+	historyLogMaxOpenedFiles int
 
 	compactionThld float32
 	compacting     atomic.Bool
@@ -201,28 +203,30 @@ func OpenWith(
 	}
 
 	t := &TBTree{
-		path:               path,
-		logger:             opts.logger,
-		id:                 opts.id,
-		wb:                 opts.wb,
-		pgBuf:              opts.pgBuf,
-		treeLog:            treeLog,
-		historyLog:         historyLog,
-		headHistoryPageID:  PageNone,
-		tailHistoryPageID:  PageNone,
-		depth:              0,
-		mutated:            false,
-		maxActiveSnapshots: opts.maxActiveSnapshots,
-		fileSize:           opts.fileSize,
-		fileMode:           opts.fileMode,
-		appWriteBufferSize: opts.appWriteBufferSize,
-		syncThld:           opts.syncThld,
-		compactionThld:     opts.compactionThld,
-		readOnly:           opts.readOnly,
-		metrics:            metrics.NewPrometheusIndexMetrics(path),
-		appFactory:         opts.appFactory,
-		appRemove:          opts.appRemove,
-		readDirFunc:        opts.readDir,
+		path:                     path,
+		logger:                   opts.logger,
+		id:                       opts.id,
+		wb:                       opts.wb,
+		pgBuf:                    opts.pgBuf,
+		treeLog:                  treeLog,
+		historyLog:               historyLog,
+		headHistoryPageID:        PageNone,
+		tailHistoryPageID:        PageNone,
+		depth:                    0,
+		mutated:                  false,
+		maxActiveSnapshots:       opts.maxActiveSnapshots,
+		fileSize:                 opts.fileSize,
+		fileMode:                 opts.fileMode,
+		appWriteBufferSize:       opts.appWriteBufferSize,
+		syncThld:                 opts.syncThld,
+		compactionThld:           opts.compactionThld,
+		readOnly:                 opts.readOnly,
+		treeLogMaxOpenedFiles:    opts.treeLogMaxOpenedFiles,
+		historyLogMaxOpenedFiles: opts.historyLogMaxOpenedFiles,
+		metrics:                  metrics.NewPrometheusIndexMetrics(path),
+		appFactory:               opts.appFactory,
+		appRemove:                opts.appRemove,
+		readDirFunc:              opts.readDir,
 	}
 
 	err := t.recoverRootPage(minTs)
@@ -1460,8 +1464,8 @@ func (t *TBTree) GetOptions() *Options {
 		//	WithRenewSnapRootAfter(t.renewSnapRootAfter).
 		WithCompactionThld(t.compactionThld).
 		//	WithDelayDuringCompaction(t.delayDuringCompaction).
-		//	WithNodesLogMaxOpenedFiles(t.nodesLogMaxOpenedFiles).
-		//	WithHistoryLogMaxOpenedFiles(t.historyLogMaxOpenedFiles).
+		WithTreeLogMaxOpenedFiles(t.treeLogMaxOpenedFiles).
+		WithHistoryLogMaxOpenedFiles(t.historyLogMaxOpenedFiles).
 		WithAppFactory(t.appFactory).
 		WithAppRemove(t.appRemove)
 }

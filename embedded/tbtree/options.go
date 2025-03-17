@@ -70,7 +70,7 @@ type Options struct {
 
 	appWriteBufferSize int
 
-	nodesLogMaxOpenedFiles   int
+	treeLogMaxOpenedFiles    int
 	historyLogMaxOpenedFiles int
 	commitLogMaxOpenedFiles  int
 
@@ -92,7 +92,7 @@ func DefaultOptions() *Options {
 		syncThld:                 DefaultSyncThld,
 		compactionThld:           DefaultCompactionThld,
 		appWriteBufferSize:       DefaultAppendableWriteBufferSize,
-		nodesLogMaxOpenedFiles:   DefaultNodesLogMaxOpenedFiles,
+		treeLogMaxOpenedFiles:    DefaultNodesLogMaxOpenedFiles,
 		historyLogMaxOpenedFiles: DefaultHistoryLogMaxOpenedFiles,
 		commitLogMaxOpenedFiles:  DefaultCommitLogMaxOpenedFiles,
 		fileSize:                 DefaultFileSize,
@@ -133,7 +133,7 @@ func (opts *Options) Validate() error {
 		return fmt.Errorf("%w: invalid appendable write buffer size", ErrInvalidOptions)
 	}
 
-	if opts.nodesLogMaxOpenedFiles <= 0 {
+	if opts.treeLogMaxOpenedFiles <= 0 {
 		return fmt.Errorf("%w: invalid NodesLogMaxOpenedFiles", ErrInvalidOptions)
 	}
 
@@ -206,6 +206,16 @@ func (opts *Options) WithFileSize(size int) *Options {
 
 func (opts *Options) WithFileMode(mode os.FileMode) *Options {
 	opts.fileMode = mode
+	return opts
+}
+
+func (opts *Options) WithTreeLogMaxOpenedFiles(n int) *Options {
+	opts.treeLogMaxOpenedFiles = n
+	return opts
+}
+
+func (opts *Options) WithHistoryLogMaxOpenedFiles(n int) *Options {
+	opts.historyLogMaxOpenedFiles = n
 	return opts
 }
 
