@@ -1333,7 +1333,6 @@ func (s *Ledger) commit(ctx context.Context, otx *OngoingTx, expectedHeader *TxH
 			return hdr, err
 		}
 	}
-
 	return hdr, nil
 }
 

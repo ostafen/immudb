@@ -29,7 +29,7 @@ func main() {
 	flag.Parse()
 
 	indexOpts := store.DefaultIndexOptions().
-		WithMaxActiveSnapshots(*numAccounts + 1).WithNumIndexers(1)
+		WithMaxActiveSnapshots(*numAccounts + 1)
 
 	st, err := store.Open(os.TempDir(), store.DefaultOptions().WithMaxConcurrency(*numAccounts).WithIndexOptions(indexOpts))
 	exitOnErr(err)
