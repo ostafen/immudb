@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
-	"os"
 	"sync"
 	"time"
 
@@ -24,12 +23,17 @@ func main() {
 	numLedgers := flag.Int("num-ledgers", 1, "number of ledgers")
 	numAccounts := flag.Int("num-accounts", 100, "number of accounts")
 	initialBalance := flag.Int("balance", 1000, "initial account balance")
+	indexers := flag.Int("indexers", 0, "indexers")
 	duration := flag.Duration("duration", 10*time.Minute, "test duration")
+	datadir := flag.String("data", "data", "test data directory")
 
 	flag.Parse()
 
 	indexOpts := store.DefaultIndexOptions().WithMaxActiveSnapshots(*numAccounts + 1)
-	st, err := store.Open(os.TempDir(), store.DefaultOptions().WithMaxConcurrency(*numAccounts).WithIndexOptions(indexOpts))
+	if *indexers != 0 {
+		indexOpts = indexOpts.WithNumIndexers(*indexers)
+	}
+	st, err := store.Open(*datadir, store.DefaultOptions().WithMaxConcurrency(*numAccounts).WithIndexOptions(indexOpts))
 	exitOnErr(err)
 	defer st.Close()
 
