@@ -966,8 +966,6 @@ func (t *TBTree) ReadSnapshot() (Snapshot, error) {
 }
 
 func (t *TBTree) snapshot() (Snapshot, error) {
-	// TODO: check max number of active snapshots
-
 	ts := t.lastSnapshotTs.Load()
 
 	snapRootID := t.lastSnapshotRootID()

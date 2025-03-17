@@ -132,7 +132,6 @@ func getWithPrefix(it Iterator, prefix, neq []byte) (key []byte, value []byte, t
 		return nil, nil, 0, 0, ErrKeyNotFound
 	}
 
-	// TODO: check logic
 	if !bytes.HasPrefix(e.Key, prefix) || bytes.Equal(e.Key, neq) {
 		return nil, nil, 0, 0, ErrKeyNotFound
 	}
