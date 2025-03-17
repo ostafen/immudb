@@ -199,6 +199,11 @@ func (opts *Options) WithReadOnly(readOnly bool) *Options {
 	return opts
 }
 
+func (opts *Options) WithFileSize(size int) *Options {
+	opts.fileSize = size
+	return opts
+}
+
 func (opts *Options) WithFileMode(mode os.FileMode) *Options {
 	opts.fileMode = mode
 	return opts

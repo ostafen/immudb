@@ -1450,13 +1450,12 @@ func (t *TBTree) GetOptions() *Options {
 	return DefaultOptions().
 		WithReadOnly(t.readOnly).
 		WithFileMode(t.fileMode).
-		//WithFileSize(t.fileSize).
+		WithFileSize(t.fileSize).
 		WithLogger(t.logger).
 		WithPageBuffer(t.pgBuf).
 		WithWriteBuffer(t.wb).
 		WithSyncThld(t.syncThld).
 		WithAppendableWriteBufferSize(t.appWriteBufferSize).
-		//WithCleanupPercentage(t.cleanupPercentage).
 		WithMaxActiveSnapshots(t.maxActiveSnapshots).
 		//	WithRenewSnapRootAfter(t.renewSnapRootAfter).
 		WithCompactionThld(t.compactionThld).
