@@ -176,7 +176,7 @@ func makeTransfer(ledger *store.Ledger, numAccounts int) {
 
 	amount := uint64(1 + rand.Intn(10))
 
-	err = tx.Set(srcAccount, nil, addValue(value, -int64(amount)))
+	err = tx.Set(srcAccount, nil, addValue(value, ^(amount-1)))
 	exitOnErr(err)
 
 	vref, err = tx.Get(context.Background(), dstAccount)
@@ -185,7 +185,7 @@ func makeTransfer(ledger *store.Ledger, numAccounts int) {
 	value, err = ledger.Resolve(vref)
 	exitOnErr(err)
 
-	err = tx.Set(dstAccount, nil, addValue(value, int64(amount)))
+	err = tx.Set(dstAccount, nil, addValue(value, amount))
 	exitOnErr(err)
 
 	_, err = tx.Commit(context.Background())
@@ -215,13 +215,13 @@ func getAccountKey(i int) []byte {
 	return fmt.Appendf(nil, "account-%d", i)
 }
 
-func addValue(v []byte, x int64) []byte {
+func addValue(v []byte, x uint64) []byte {
 	balance := binary.BigEndian.Uint64(v)
 
 	var buf [8]byte
 
-	newBalance := int64(balance) + x
-	binary.BigEndian.PutUint64(buf[:], uint64(newBalance))
+	newBalance := balance + x
+	binary.BigEndian.PutUint64(buf[:], newBalance)
 
 	return buf[:]
 }
