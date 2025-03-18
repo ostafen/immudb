@@ -19,6 +19,7 @@ while true; do
     NUM_LEDGERS=$((RANDOM % 6 + 5))
 
     "$BINARY" --num-ledgers $NUM_LEDGERS --duration 10m &> "$LOG_FILE"
+    rm -rf /tmp/ledger-*
     
     if grep -q "$SEARCH_STRING" "$LOG_FILE"; then
         echo "String found, keeping log: $LOG_FILE"
