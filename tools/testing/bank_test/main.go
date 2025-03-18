@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -119,10 +120,18 @@ func checkBalances(ledger *store.Ledger, numAccounts, expectedTotalBalance int) 
 
 	defer reader.Close()
 
+	type info struct {
+		Balance  uint64
+		Revision int
+		TxID     uint64
+	}
+
+	infos := make(map[string]info)
+
 	n := 0
 	totalBalance := uint64(0)
 	for {
-		_, val, err := reader.Read(context.Background())
+		key, val, err := reader.Read(context.Background())
 		if errors.Is(err, store.ErrNoMoreEntries) {
 			break
 		}
@@ -130,8 +139,15 @@ func checkBalances(ledger *store.Ledger, numAccounts, expectedTotalBalance int) 
 		value, err := ledger.Resolve(val)
 		exitOnErr(err)
 
-		totalBalance += binary.BigEndian.Uint64(value)
+		balance := binary.BigEndian.Uint64(value)
+		totalBalance += balance
 		n++
+
+		infos[string(key)] = info{
+			Balance:  balance,
+			Revision: int(val.Revision()),
+			TxID:     val.TxID(),
+		}
 	}
 
 	if numAccounts != n {
@@ -139,7 +155,10 @@ func checkBalances(ledger *store.Ledger, numAccounts, expectedTotalBalance int) 
 	}
 
 	if totalBalance != uint64(expectedTotalBalance) {
-		panic(fmt.Sprintf("total balance should be %d, but is %d", expectedTotalBalance, totalBalance))
+		data, _ := json.Marshal(infos)
+		fmt.Println(string(data))
+
+		panic(fmt.Sprintf("%s: total balance should be %d, but is %d", ledger.Path(), expectedTotalBalance, totalBalance))
 	}
 }
 
