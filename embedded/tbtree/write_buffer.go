@@ -22,6 +22,7 @@ import (
 	"sync/atomic"
 
 	"github.com/codenotary/immudb/embedded/metrics"
+	"github.com/codenotary/immudb/embedded/util/malloc"
 )
 
 const ChunkNone = -1
@@ -53,7 +54,7 @@ func NewSharedWriteBuffer(
 	numChunks := (size + (chunkSize - 1)) / chunkSize
 
 	return &SharedWriteBuffer{
-		buf:       make([]byte, numChunks*chunkSize),
+		buf:       malloc.MallocAligned(numChunks*chunkSize, PageSize),
 		state:     make([]atomic.Bool, numChunks),
 		chunkSize: chunkSize,
 	}
