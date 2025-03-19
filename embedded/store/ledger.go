@@ -1563,12 +1563,6 @@ func (s *Ledger) performPrecommit(tx *Tx, entries []*EntrySpec, ts int64, blTxID
 		return ErrMaxActiveTransactionsLimitExceeded
 	}
 
-	// will overwrite partially written and uncommitted data
-	err := s.txLog.SetOffset(s.precommittedTxLogSize)
-	if err != nil {
-		return fmt.Errorf("commit-log: could not set offset: %w", err)
-	}
-
 	tx.header.ID = s.inmemPrecommittedTxID + 1
 	tx.header.Ts = ts
 
@@ -1588,112 +1582,9 @@ func (s *Ledger) performPrecommit(tx *Tx, entries []*EntrySpec, ts int64, blTxID
 
 	tx.header.PrevAlh = s.inmemPrecommittedAlh
 
-	txSize := 0
-
-	// tx serialization into pre-allocated buffer
-	binary.BigEndian.PutUint64(s._txbs[txSize:], uint64(tx.header.ID))
-	txSize += txIDSize
-	binary.BigEndian.PutUint64(s._txbs[txSize:], uint64(tx.header.Ts))
-	txSize += tsSize
-	binary.BigEndian.PutUint64(s._txbs[txSize:], uint64(tx.header.BlTxID))
-	txSize += txIDSize
-	copy(s._txbs[txSize:], tx.header.BlRoot[:])
-	txSize += sha256.Size
-	copy(s._txbs[txSize:], tx.header.PrevAlh[:])
-	txSize += sha256.Size
-
-	binary.BigEndian.PutUint16(s._txbs[txSize:], uint16(tx.header.Version))
-	txSize += sszSize
-
-	switch tx.header.Version {
-	case 0:
-		{
-			binary.BigEndian.PutUint16(s._txbs[txSize:], uint16(tx.header.NEntries))
-			txSize += sszSize
-		}
-	case 1:
-		{
-			var txmdbs []byte
-
-			if tx.header.Metadata != nil {
-				txmdbs = tx.header.Metadata.Bytes()
-			}
-
-			binary.BigEndian.PutUint16(s._txbs[txSize:], uint16(len(txmdbs)))
-			txSize += sszSize
-
-			copy(s._txbs[txSize:], txmdbs)
-			txSize += len(txmdbs)
-
-			binary.BigEndian.PutUint32(s._txbs[txSize:], uint32(tx.header.NEntries))
-			txSize += lszSize
-		}
-	default:
-		{
-			panic(fmt.Errorf("missing tx serialization method for version %d", tx.header.Version))
-		}
-	}
-
-	// will overwrite partially written and uncommitted data
-	err = s.txLog.SetOffset(s.precommittedTxLogSize)
+	txSize, txPrefixLen, err := s.serializeTx(tx, entries)
 	if err != nil {
-		return fmt.Errorf("%w: could not set offset in txLog", err)
-	}
-
-	// total values length will be prefixed when values are embedded into txLog
-	txPrefixLen := 0
-
-	if s.embeddedValues {
-		embeddedValuesLen := 0
-		for _, e := range entries {
-			embeddedValuesLen += len(e.Value)
-		}
-
-		var embeddedValuesLenBs [sszSize]byte
-		binary.BigEndian.PutUint16(embeddedValuesLenBs[:], uint16(embeddedValuesLen))
-
-		_, _, err := s.txLog.Append(embeddedValuesLenBs[:])
-		if err != nil {
-			return fmt.Errorf("%w: writing transaction values", err)
-		}
-
-		offsets, err := s.appendValuesInto(entries, s.txLog)
-		if err != nil {
-			return fmt.Errorf("%w: writing transaction values", err)
-		}
-
-		for i := 0; i < tx.header.NEntries; i++ {
-			tx.entries[i].vOff = offsets[i]
-		}
-
-		txPrefixLen = sszSize + embeddedValuesLen
-	}
-
-	for i := 0; i < tx.header.NEntries; i++ {
-		txe := tx.entries[i]
-
-		// tx serialization using pre-allocated buffer
-		// md is stored before key to ensure backward compatibility
-		var kvmdbs []byte
-
-		if txe.md != nil {
-			kvmdbs = txe.md.Bytes()
-		}
-
-		binary.BigEndian.PutUint16(s._txbs[txSize:], uint16(len(kvmdbs)))
-		txSize += sszSize
-		copy(s._txbs[txSize:], kvmdbs)
-		txSize += len(kvmdbs)
-		binary.BigEndian.PutUint16(s._txbs[txSize:], uint16(txe.kLen))
-		txSize += sszSize
-		copy(s._txbs[txSize:], txe.k[:txe.kLen])
-		txSize += txe.kLen
-		binary.BigEndian.PutUint32(s._txbs[txSize:], uint32(txe.vLen))
-		txSize += lszSize
-		binary.BigEndian.PutUint64(s._txbs[txSize:], uint64(txe.vOff))
-		txSize += offsetSize
-		copy(s._txbs[txSize:], txe.hVal[:])
-		txSize += sha256.Size
+		return err
 	}
 
 	// tx serialization using pre-allocated buffer
@@ -1742,6 +1633,117 @@ func (s *Ledger) performPrecommit(tx *Tx, entries []*EntrySpec, ts int64, blTxID
 	}
 
 	return nil
+}
+
+func (s *Ledger) serializeTx(tx *Tx, entries []*EntrySpec) (int, int, error) {
+	txSize := 0
+
+	// tx serialization into pre-allocated buffer
+	binary.BigEndian.PutUint64(s._txbs[txSize:], uint64(tx.header.ID))
+	txSize += txIDSize
+	binary.BigEndian.PutUint64(s._txbs[txSize:], uint64(tx.header.Ts))
+	txSize += tsSize
+	binary.BigEndian.PutUint64(s._txbs[txSize:], uint64(tx.header.BlTxID))
+	txSize += txIDSize
+	copy(s._txbs[txSize:], tx.header.BlRoot[:])
+	txSize += sha256.Size
+	copy(s._txbs[txSize:], tx.header.PrevAlh[:])
+	txSize += sha256.Size
+
+	binary.BigEndian.PutUint16(s._txbs[txSize:], uint16(tx.header.Version))
+	txSize += sszSize
+
+	switch tx.header.Version {
+	case 0:
+		{
+			binary.BigEndian.PutUint16(s._txbs[txSize:], uint16(tx.header.NEntries))
+			txSize += sszSize
+		}
+	case 1:
+		{
+			var txmdbs []byte
+
+			if tx.header.Metadata != nil {
+				txmdbs = tx.header.Metadata.Bytes()
+			}
+
+			binary.BigEndian.PutUint16(s._txbs[txSize:], uint16(len(txmdbs)))
+			txSize += sszSize
+
+			copy(s._txbs[txSize:], txmdbs)
+			txSize += len(txmdbs)
+
+			binary.BigEndian.PutUint32(s._txbs[txSize:], uint32(tx.header.NEntries))
+			txSize += lszSize
+		}
+	default:
+		{
+			panic(fmt.Errorf("missing tx serialization method for version %d", tx.header.Version))
+		}
+	}
+
+	// will overwrite partially written and uncommitted data
+	err := s.txLog.SetOffset(s.precommittedTxLogSize)
+	if err != nil {
+		return -1, -1, fmt.Errorf("%w: could not set offset in txLog", err)
+	}
+
+	// total values length will be prefixed when values are embedded into txLog
+	txPrefixLen := 0
+
+	if s.embeddedValues {
+		embeddedValuesLen := 0
+		for _, e := range entries {
+			embeddedValuesLen += len(e.Value)
+		}
+
+		var embeddedValuesLenBs [sszSize]byte
+		binary.BigEndian.PutUint16(embeddedValuesLenBs[:], uint16(embeddedValuesLen))
+
+		_, _, err := s.txLog.Append(embeddedValuesLenBs[:])
+		if err != nil {
+			return -1, -1, fmt.Errorf("%w: writing transaction values", err)
+		}
+
+		offsets, err := s.appendValuesInto(entries, s.txLog)
+		if err != nil {
+			return -1, -1, fmt.Errorf("%w: writing transaction values", err)
+		}
+
+		for i := 0; i < tx.header.NEntries; i++ {
+			tx.entries[i].vOff = offsets[i]
+		}
+
+		txPrefixLen = sszSize + embeddedValuesLen
+	}
+
+	for i := 0; i < tx.header.NEntries; i++ {
+		txe := tx.entries[i]
+
+		// tx serialization using pre-allocated buffer
+		// md is stored before key to ensure backward compatibility
+		var kvmdbs []byte
+
+		if txe.md != nil {
+			kvmdbs = txe.md.Bytes()
+		}
+
+		binary.BigEndian.PutUint16(s._txbs[txSize:], uint16(len(kvmdbs)))
+		txSize += sszSize
+		copy(s._txbs[txSize:], kvmdbs)
+		txSize += len(kvmdbs)
+		binary.BigEndian.PutUint16(s._txbs[txSize:], uint16(txe.kLen))
+		txSize += sszSize
+		copy(s._txbs[txSize:], txe.k[:txe.kLen])
+		txSize += txe.kLen
+		binary.BigEndian.PutUint32(s._txbs[txSize:], uint32(txe.vLen))
+		txSize += lszSize
+		binary.BigEndian.PutUint64(s._txbs[txSize:], uint64(txe.vOff))
+		txSize += offsetSize
+		copy(s._txbs[txSize:], txe.hVal[:])
+		txSize += sha256.Size
+	}
+	return txSize, txPrefixLen, nil
 }
 
 func (s *Ledger) SetExternalCommitAllowance(enabled bool) {
@@ -1845,7 +1847,6 @@ func (s *Ledger) AllowCommitUpto(txID uint64) error {
 	if !s.synced {
 		return s.mayCommit()
 	}
-
 	return nil
 }
 

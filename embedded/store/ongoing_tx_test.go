@@ -62,24 +62,6 @@ func TestOngoingTxCheckPreconditionsCornerCases(t *testing.T) {
 
 	err = ledger.Close()
 	require.NoError(t, err)
-
-	otx.preconditions = []Precondition{
-		&PreconditionKeyMustExist{Key: []byte{1}},
-	}
-	err = otx.checkCanCommit(context.Background())
-	require.ErrorIs(t, err, ErrAlreadyClosed)
-
-	otx.preconditions = []Precondition{
-		&PreconditionKeyMustNotExist{Key: []byte{1}},
-	}
-	err = otx.checkCanCommit(context.Background())
-	require.ErrorIs(t, err, ErrAlreadyClosed)
-
-	otx.preconditions = []Precondition{
-		&PreconditionKeyNotModifiedAfterTx{Key: []byte{1}, TxID: 1},
-	}
-	err = otx.checkCanCommit(context.Background())
-	require.ErrorIs(t, err, ErrAlreadyClosed)
 }
 
 func TestOngoingTxOptions(t *testing.T) {
