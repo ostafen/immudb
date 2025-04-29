@@ -79,7 +79,6 @@ func TestInvalidIndexOptions(t *testing.T) {
 		{"DelayDuringCompaction", DefaultIndexOptions().WithDelayDuringCompaction(-1)},
 		{"NodesLogMaxOpenedFiles", DefaultIndexOptions().WithNodesLogMaxOpenedFiles(0)},
 		{"HistoryLogMaxOpenedFiles", DefaultIndexOptions().WithHistoryLogMaxOpenedFiles(0)},
-		// TODO:		{"CommitLogMaxOpenedFiles", DefaultIndexOptions().WithCommitLogMaxOpenedFiles(0)},
 	} {
 		t.Run(d.n, func(t *testing.T) {
 			require.ErrorIs(t, d.opts.Validate(), ErrInvalidOptions)
@@ -179,7 +178,6 @@ func TestValidOptions(t *testing.T) {
 		indexOpts.WithRenewSnapRootAfter(time.Duration(1000)*time.Millisecond).RenewSnapRootAfter)
 	require.Equal(t, 10, indexOpts.WithNodesLogMaxOpenedFiles(10).NodesLogMaxOpenedFiles)
 	require.Equal(t, 11, indexOpts.WithHistoryLogMaxOpenedFiles(11).HistoryLogMaxOpenedFiles)
-	//	require.Equal(t, 12, indexOpts.WithCommitLogMaxOpenedFiles(12).CommitLogMaxOpenedFiles)
 	require.Equal(t, 0.7, indexOpts.WithCompactionThld(0.7).CompactionThld)
 	require.Equal(t, 1*time.Millisecond, indexOpts.WithDelayDuringCompaction(1*time.Millisecond).DelayDuringCompaction)
 	require.Equal(t, 4096*2, indexOpts.WithFlushBufferSize(4096*2).FlushBufferSize)

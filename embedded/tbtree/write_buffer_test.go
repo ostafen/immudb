@@ -17,7 +17,7 @@ limitations under the License.
 package tbtree
 
 import (
-	"math/rand/v2"
+	"math/rand"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -88,7 +88,7 @@ func TestSharedWriteBuffer(t *testing.T) {
 		}
 
 		require.Panics(t, func() {
-			wb.Release(rand.IntN(wb.NumChunks()))
+			wb.Release(rand.Intn(wb.NumChunks()))
 		})
 	})
 }

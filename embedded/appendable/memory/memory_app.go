@@ -1,11 +1,3 @@
-package memory
-
-import (
-	"bytes"
-
-	"github.com/codenotary/immudb/embedded/appendable"
-)
-
 /*
 Copyright 2024 Codenotary Inc. All rights reserved.
 
@@ -21,6 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+package memory
+
+import (
+	"bytes"
+
+	"github.com/codenotary/immudb/embedded/appendable"
+)
 
 var _ appendable.Appendable = &memApp{}
 
