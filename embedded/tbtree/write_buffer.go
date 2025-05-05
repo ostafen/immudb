@@ -155,6 +155,8 @@ func NewWriteBuffer(
 		return nil, fmt.Errorf("min chunks cannot be greater than max chunks")
 	}
 
+	fmt.Println("min/max chunks - ", minChunks, maxChunks, swb.ChunkSize())
+
 	wb := &WriteBuffer{
 		swb:                          swb,
 		bufferChunks:                 make([]uint32, maxChunks),
