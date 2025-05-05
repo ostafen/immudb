@@ -318,11 +318,14 @@ func (wb *WriteBuffer) allocPageBuf() ([]byte, PageID, error) {
 func (wb *WriteBuffer) Grow(numPages int) bool {
 	for wb.availablePages() < numPages {
 		if wb.allocatedChunks == len(wb.bufferChunks) {
+			fmt.Println("cannot grow the buffer 0: ", wb.allocatedChunks, wb.reservedChunks, len(wb.bufferChunks), wb.availablePages())
 			return false
 		}
 
 		chunk := wb.swb.AllocPageChunk()
 		if chunk == ChunkNone {
+			fmt.Println("cannot grow the buffer 1: ", wb.allocatedChunks, wb.reservedChunks, len(wb.bufferChunks), wb.availablePages())
+
 			return false
 		}
 		wb.bufferChunks[wb.reservedChunks] = uint32(chunk)
