@@ -144,11 +144,6 @@ func (sm *manager) deleteSession(sessionID string) error {
 	}
 
 	merr := multierr.NewMultiErr()
-
-	if err := sess.CloseDocumentReaders(); err != nil {
-		merr.Append(err)
-	}
-
 	if err := sess.RollbackTransactions(); err != nil {
 		merr.Append(err)
 	}

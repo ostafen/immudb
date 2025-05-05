@@ -61,11 +61,6 @@ func startWebServer(ctx context.Context, grpcAddr string, httpAddr string, tlsCo
 		return nil, err
 	}
 
-	err = protomodel.RegisterDocumentServiceHandler(ctx, proxyMux, grpcClient)
-	if err != nil {
-		return nil, err
-	}
-
 	webMux := http.NewServeMux()
 
 	webMux.Handle("/api/", http.StripPrefix("/api", proxyMux))
