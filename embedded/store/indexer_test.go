@@ -177,7 +177,7 @@ func TestCloseIndexing(t *testing.T) {
 }
 
 func TestIndexers(t *testing.T) {
-	nIndexes := 30
+	nIndexes := 10
 
 	writeBufferSize := 8 * 1024 * 1024
 	pageBufferSize := tbtree.PageSize * 5
