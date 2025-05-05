@@ -2,7 +2,6 @@ package server
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 
 	"github.com/codenotary/immudb/embedded/store"
@@ -53,8 +52,6 @@ func getStoreOptionsFromConfig(configPath string) *store.Options {
 	if err != nil {
 		return opts
 	}
-
-	fmt.Println("STORE CONFIG: ", conf)
 
 	if conf.NumIndexers > 0 {
 		opts.IndexOpts.WithNumIndexers(conf.NumIndexers)
