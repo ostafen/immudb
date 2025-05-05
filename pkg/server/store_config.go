@@ -61,7 +61,7 @@ func getStoreOptionsFromConfig(configPath string) *store.Options {
 	}
 
 	if conf.SharedWriteBufferChunkSize > 0 {
-		opts.IndexOpts.WithSharedWriteBufferSize(conf.SharedWriteBufferChunkSize)
+		opts.IndexOpts.WithSharedWriteBufferChunkSize(conf.SharedWriteBufferChunkSize)
 	}
 
 	if conf.SharedWriteBufferSize > 0 {
@@ -73,7 +73,7 @@ func getStoreOptionsFromConfig(configPath string) *store.Options {
 	}
 
 	if conf.WriteBufferMaxSize > 0 {
-		opts.IndexOpts.WithMinWriteBufferSize(conf.WriteBufferMaxSize)
+		opts.IndexOpts.WithMaxWriteBufferSize(conf.WriteBufferMaxSize)
 	}
 	return opts
 }
