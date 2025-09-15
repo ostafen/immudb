@@ -57,9 +57,6 @@ type Iterator interface {
 type TBTreeIterator struct {
 	tree *TBTree
 
-	// TODO: only allocate a single page per iterator
-	// that can be reused
-
 	opts   IteratorOptions
 	rootID PageID
 	maxTs  uint64
@@ -184,8 +181,7 @@ func (it *TBTreeIterator) Next() (*Entry, error) {
 
 	e, err := it.nextBetween(it.opts.StartTs, endTs)
 	if err == nil {
-		// TODO: this is a temporary hack to prevent in place modifications
-		// from caller code.
+		// TODO: temporary hack to prevent in place modifications from caller code.
 		cp := e.Copy()
 		return &cp, err
 	}
@@ -314,9 +310,8 @@ func (it *TBTreeIterator) nextHistoryEntry() (Entry, bool, error) {
 		}
 
 		return Entry{
-			Ts:   tv.Ts,
-			HOff: it.currHistoryIt.e.HOff,
-			// TODO:	HC:    e.HC - uint64(discarded),
+			Ts:    tv.Ts,
+			HOff:  it.currHistoryIt.e.HOff,
 			HC:    uint64(it.currHistoryIt.Revision()),
 			Key:   it.currHistoryKey,
 			Value: tv.Value,

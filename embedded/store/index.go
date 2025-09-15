@@ -201,7 +201,7 @@ func (idx *index) SnapshotMustIncludeTxWithRenewalPeriod(ctx context.Context, tx
 	}
 
 	// TODO: consider renewal period
-	return idx.tree.SnapshotMustIncludeTs(ctx, txID)
+	return idx.tree.SnapshotMustIncludeTsWithRenewalPeriod(ctx, txID, renewalPeriod)
 }
 
 func (idx *index) SnapshotAtTs(ctx context.Context, txID uint64) (tbtree.Snapshot, error) {

@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/codenotary/immudb/embedded/appendable"
 	"github.com/codenotary/immudb/embedded/appendable/multiapp"
@@ -72,6 +73,7 @@ type TBTree struct {
 
 	rootID         atomic.Uint64
 	lastSnapshotID atomic.Uint64
+	lastSnapRootAt time.Time
 
 	rootTs         atomic.Uint64
 	lastSnapshotTs atomic.Uint64
@@ -97,10 +99,13 @@ type TBTree struct {
 	syncThld      int
 	unsyncedBytes atomic.Uint32
 
-	fileSize           int
-	fileMode           os.FileMode
-	appWriteBufferSize int
-	readOnly           bool
+	fileSize                 int
+	fileMode                 os.FileMode
+	appWriteBufferSize       int
+	readOnly                 bool
+	treeLogMaxOpenedFiles    int
+	historyLogMaxOpenedFiles int
+	snapshotRenewalPeriod    time.Duration
 
 	compactionThld float32
 	compacting     atomic.Bool
@@ -199,28 +204,31 @@ func OpenWith(
 	}
 
 	t := &TBTree{
-		path:               path,
-		logger:             opts.logger,
-		id:                 opts.id,
-		wb:                 opts.wb,
-		pgBuf:              opts.pgBuf,
-		treeLog:            treeLog,
-		historyLog:         historyLog,
-		headHistoryPageID:  PageNone,
-		tailHistoryPageID:  PageNone,
-		depth:              0,
-		mutated:            false,
-		maxActiveSnapshots: opts.maxActiveSnapshots,
-		fileSize:           opts.fileSize,
-		fileMode:           opts.fileMode,
-		appWriteBufferSize: opts.appWriteBufferSize,
-		syncThld:           opts.syncThld,
-		compactionThld:     opts.compactionThld,
-		readOnly:           opts.readOnly,
-		metrics:            metrics.NewPrometheusIndexMetrics(path),
-		appFactory:         opts.appFactory,
-		appRemove:          opts.appRemove,
-		readDirFunc:        opts.readDir,
+		path:                     path,
+		logger:                   opts.logger,
+		id:                       opts.id,
+		wb:                       opts.wb,
+		pgBuf:                    opts.pgBuf,
+		treeLog:                  treeLog,
+		historyLog:               historyLog,
+		headHistoryPageID:        PageNone,
+		tailHistoryPageID:        PageNone,
+		depth:                    0,
+		mutated:                  false,
+		maxActiveSnapshots:       opts.maxActiveSnapshots,
+		fileSize:                 opts.fileSize,
+		fileMode:                 opts.fileMode,
+		appWriteBufferSize:       opts.appWriteBufferSize,
+		syncThld:                 opts.syncThld,
+		compactionThld:           opts.compactionThld,
+		readOnly:                 opts.readOnly,
+		treeLogMaxOpenedFiles:    opts.treeLogMaxOpenedFiles,
+		historyLogMaxOpenedFiles: opts.historyLogMaxOpenedFiles,
+		snapshotRenewalPeriod:    opts.snapshotRenewalPeriod,
+		metrics:                  metrics.NewPrometheusIndexMetrics(path),
+		appFactory:               opts.appFactory,
+		appRemove:                opts.appRemove,
+		readDirFunc:              opts.readDir,
 	}
 
 	err := t.recoverRootPage(minTs)
@@ -964,8 +972,6 @@ func (t *TBTree) ReadSnapshot() (Snapshot, error) {
 }
 
 func (t *TBTree) snapshot() (Snapshot, error) {
-	// TODO: check max number of active snapshots
-
 	ts := t.lastSnapshotTs.Load()
 
 	snapRootID := t.lastSnapshotRootID()
@@ -1041,14 +1047,14 @@ func (t *TBTree) Flush() error {
 	t.mtx.Lock()
 	defer t.mtx.Unlock()
 
-	return t.flushToTreeLog()
+	return t.flush()
 }
 
 func (t *TBTree) FlushReset() error {
 	t.mtx.Lock()
 	defer t.mtx.Unlock()
 
-	err := t.flushToTreeLog()
+	err := t.flush()
 	t.wb.Reset()
 	return err
 }
@@ -1059,10 +1065,10 @@ func (t *TBTree) TryFlush() error {
 	}
 	defer t.mtx.Unlock()
 
-	return t.flushToTreeLog()
+	return t.flush()
 }
 
-func (t *TBTree) flushToTreeLog() error {
+func (t *TBTree) flush() error {
 	if !t.mutated {
 		t.logger.Infof("flushing not needed. exiting...")
 		return nil
@@ -1081,6 +1087,7 @@ func (t *TBTree) flushToTreeLog() error {
 	t.tailHistoryPageID = PageNone
 	t.mutated = false
 	t.allocatedPagesSinceLastFlush = 0
+	t.lastSnapRootAt = time.Now()
 
 	t.maybeSync(uint32(bytesWritten))
 	return nil
@@ -1387,7 +1394,7 @@ func (t *TBTree) StalePagePercentage() float32 {
 }
 
 func (t *TBTree) SnapshotAtTs(ctx context.Context, ts uint64) (Snapshot, error) {
-	snapRootID, snapTs, err := t.ensureLatestSnapshotContainsTs(ctx, ts)
+	snapRootID, snapTs, err := t.ensureLatestSnapshotContainsTs(ts, t.snapshotRenewalPeriod)
 	if err != nil {
 		return nil, err
 	}
@@ -1403,8 +1410,12 @@ func (t *TBTree) SnapshotAtTs(ctx context.Context, ts uint64) (Snapshot, error) 
 	)
 }
 
-func (t *TBTree) SnapshotMustIncludeTs(ctx context.Context, ts uint64) (Snapshot, error) {
-	snapRootID, snapTs, err := t.ensureLatestSnapshotContainsTs(ctx, ts)
+// SnapshotMustIncludeTsWithRenewalPeriod returns a new snapshot based on an existent dumped root (snapshot reuse).
+// Current root may be dumped if there are no previous root already stored on disk or if the dumped one was old enough.
+// If ts is 0, any snapshot not older than renewalPeriod may be used.
+// If renewalPeriod is 0, renewal period is not taken into consideration
+func (t *TBTree) SnapshotMustIncludeTsWithRenewalPeriod(ctx context.Context, ts uint64, renewalPeriod time.Duration) (Snapshot, error) {
+	snapRootID, snapTs, err := t.ensureLatestSnapshotContainsTs(ts, renewalPeriod)
 	if err != nil {
 		return nil, err
 	}
@@ -1415,22 +1426,21 @@ func (t *TBTree) SnapshotMustIncludeTs(ctx context.Context, ts uint64) (Snapshot
 	)
 }
 
-func (t *TBTree) ensureLatestSnapshotContainsTs(
-	ctx context.Context,
-	ts uint64,
-) (PageID, uint64, error) {
+func (t *TBTree) ensureLatestSnapshotContainsTs(ts uint64, renewalPeriod time.Duration) (PageID, uint64, error) {
 	t.mtx.Lock()
 	defer t.mtx.Unlock()
 
 	lastSnapRootID := t.lastSnapshotRootID()
-	flushNeeded := lastSnapRootID == PageNone || (ts > 0 && t.lastSnapshotTs.Load() < ts)
+	flushNeeded := lastSnapRootID == PageNone ||
+		(ts > 0 && t.lastSnapshotTs.Load() < ts) ||
+		(renewalPeriod > 0 && time.Since(t.lastSnapRootAt) >= renewalPeriod)
 
 	if rootTs := t.Ts(); rootTs < ts {
 		return PageNone, 0, fmt.Errorf("%w: root timestamp (%d) must be >= %d", ErrStaleRootTimestamp, rootTs, ts)
 	}
 
 	if flushNeeded {
-		err := t.flushToTreeLog()
+		err := t.flush()
 		if err != nil {
 			return PageNone, 0, err
 		}
@@ -1446,19 +1456,18 @@ func (t *TBTree) GetOptions() *Options {
 	return DefaultOptions().
 		WithReadOnly(t.readOnly).
 		WithFileMode(t.fileMode).
-		//WithFileSize(t.fileSize).
+		WithFileSize(t.fileSize).
 		WithLogger(t.logger).
 		WithPageBuffer(t.pgBuf).
 		WithWriteBuffer(t.wb).
 		WithSyncThld(t.syncThld).
 		WithAppendableWriteBufferSize(t.appWriteBufferSize).
-		//WithCleanupPercentage(t.cleanupPercentage).
 		WithMaxActiveSnapshots(t.maxActiveSnapshots).
 		//	WithRenewSnapRootAfter(t.renewSnapRootAfter).
 		WithCompactionThld(t.compactionThld).
 		//	WithDelayDuringCompaction(t.delayDuringCompaction).
-		//	WithNodesLogMaxOpenedFiles(t.nodesLogMaxOpenedFiles).
-		//	WithHistoryLogMaxOpenedFiles(t.historyLogMaxOpenedFiles).
+		WithTreeLogMaxOpenedFiles(t.treeLogMaxOpenedFiles).
+		WithHistoryLogMaxOpenedFiles(t.historyLogMaxOpenedFiles).
 		WithAppFactory(t.appFactory).
 		WithAppRemove(t.appRemove)
 }
@@ -1471,7 +1480,7 @@ func (t *TBTree) Close() error {
 		return ErrActiveSnapshots
 	}
 
-	if err := t.flushToTreeLog(); err != nil {
+	if err := t.flush(); err != nil {
 		return err
 	}
 

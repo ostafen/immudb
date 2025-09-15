@@ -124,7 +124,7 @@ func TestCloseIndexing(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("closing index with active snapshots should fail", func(t *testing.T) {
-		snap, err := idx.tree.SnapshotMustIncludeTs(context.Background(), 10)
+		snap, err := idx.tree.SnapshotMustIncludeTsWithRenewalPeriod(context.Background(), 10, 0)
 		require.NoError(t, err)
 		defer snap.Close()
 

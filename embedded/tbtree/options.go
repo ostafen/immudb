@@ -36,8 +36,8 @@ const (
 	DefaultFileSize = 1 << 26 // 64Mb
 	DefaultFileMode = os.FileMode(0755)
 
-	DefaultMaxActiveSnapshots = 100
-	DefaultRenewSnapRootAfter = time.Duration(1000) * time.Millisecond
+	DefaultMaxActiveSnapshots    = 100
+	DefaultSnapshotRenewalPeriod = time.Duration(1000) * time.Millisecond
 
 	DefaultAppendableWriteBufferSize = 4096
 
@@ -70,9 +70,11 @@ type Options struct {
 
 	appWriteBufferSize int
 
-	nodesLogMaxOpenedFiles   int
+	treeLogMaxOpenedFiles    int
 	historyLogMaxOpenedFiles int
 	commitLogMaxOpenedFiles  int
+
+	snapshotRenewalPeriod time.Duration
 
 	// options below are only set during initialization and stored as metadata
 	fileSize int
@@ -86,15 +88,16 @@ func DefaultOptions() *Options {
 	return &Options{
 		logger:                   logger.NewMemoryLogger(),
 		maxActiveSnapshots:       DefaultMaxActiveSnapshots,
-		renewSnapRootAfter:       DefaultRenewSnapRootAfter,
+		renewSnapRootAfter:       DefaultSnapshotRenewalPeriod,
 		fileMode:                 DefaultFileMode,
 		readOnly:                 false,
 		syncThld:                 DefaultSyncThld,
 		compactionThld:           DefaultCompactionThld,
 		appWriteBufferSize:       DefaultAppendableWriteBufferSize,
-		nodesLogMaxOpenedFiles:   DefaultNodesLogMaxOpenedFiles,
+		treeLogMaxOpenedFiles:    DefaultNodesLogMaxOpenedFiles,
 		historyLogMaxOpenedFiles: DefaultHistoryLogMaxOpenedFiles,
 		commitLogMaxOpenedFiles:  DefaultCommitLogMaxOpenedFiles,
+		snapshotRenewalPeriod:    DefaultSnapshotRenewalPeriod,
 		fileSize:                 DefaultFileSize,
 		appFactory:               defaultAppFactory,
 		appRemove:                defaultAppRemove,
@@ -133,7 +136,7 @@ func (opts *Options) Validate() error {
 		return fmt.Errorf("%w: invalid appendable write buffer size", ErrInvalidOptions)
 	}
 
-	if opts.nodesLogMaxOpenedFiles <= 0 {
+	if opts.treeLogMaxOpenedFiles <= 0 {
 		return fmt.Errorf("%w: invalid NodesLogMaxOpenedFiles", ErrInvalidOptions)
 	}
 
@@ -199,8 +202,23 @@ func (opts *Options) WithReadOnly(readOnly bool) *Options {
 	return opts
 }
 
+func (opts *Options) WithFileSize(size int) *Options {
+	opts.fileSize = size
+	return opts
+}
+
 func (opts *Options) WithFileMode(mode os.FileMode) *Options {
 	opts.fileMode = mode
+	return opts
+}
+
+func (opts *Options) WithTreeLogMaxOpenedFiles(n int) *Options {
+	opts.treeLogMaxOpenedFiles = n
+	return opts
+}
+
+func (opts *Options) WithHistoryLogMaxOpenedFiles(n int) *Options {
+	opts.historyLogMaxOpenedFiles = n
 	return opts
 }
 

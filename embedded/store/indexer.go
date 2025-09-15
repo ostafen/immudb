@@ -141,8 +141,6 @@ func (indexer *Indexer) tryIndexNext() (bool, error) {
 	defer func() {
 		if push {
 			indexer.pushIndex(idx, false)
-		} else {
-			indexer.logger.Infof("discarding index %s", idx.path)
 		}
 	}()
 
@@ -160,7 +158,7 @@ func (indexer *Indexer) tryIndexNext() (bool, error) {
 		return true, nil
 	}
 
-	err := indexer.indexUpTo(idx, idx.ledger.LastCommittedTxID())
+	err := indexer.indexUpTo(idx, upToTx)
 	switch {
 	case errors.Is(err, watchers.ErrAlreadyClosed),
 		errors.Is(err, ErrAlreadyClosed):
@@ -196,9 +194,6 @@ func (indexer *Indexer) popIndex() *index {
 	defer indexer.mtx.Unlock()
 
 	numIndexes := indexer.queue.Len()
-
-	indexer.logger.Infof("num indexes is %d", numIndexes)
-
 	for n := 0; n < numIndexes; n++ {
 		e, ok := indexer.queue.PopFront()
 		if !ok {

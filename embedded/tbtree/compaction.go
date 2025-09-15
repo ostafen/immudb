@@ -54,7 +54,7 @@ func (t *TBTree) Compact(ctx context.Context, force bool) error {
 		t.mtx.Lock()
 		defer t.mtx.Unlock()
 
-		err := t.flushToTreeLog()
+		err := t.flush()
 		// NOTE: Holding the lock on mtx while reading snapRootID and Ts ensures atomicity.
 		return t.lastSnapshotRootID(), t.lastSnapshotTs.Load(), t.IndexedEntryCount(), err
 	}()

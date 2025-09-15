@@ -33,7 +33,7 @@ func main() {
 	if *indexers != 0 {
 		indexOpts = indexOpts.WithNumIndexers(*indexers)
 	}
-	st, err := store.Open(*datadir, store.DefaultOptions().WithMaxConcurrency(*numAccounts).WithIndexOptions(indexOpts))
+  st, err := store.Open(*datadir.TempDir(), store.DefaultOptions().WithMaxConcurrency(*numAccounts).WithIndexOptions(indexOpts))
 	exitOnErr(err)
 	defer st.Close()
 
@@ -62,20 +62,22 @@ func main() {
 		err = ledger.WaitForIndexingUpto(context.Background(), 1)
 		exitOnErr(err)
 
-		startLedgerSimulation(
+		startLedgerBankTransfer(
 			ctx, &wg, ledger, *numAccounts, *initialBalance)
 	}
 
 	time.Sleep(*duration)
 
-	fmt.Println("exiting from test...")
+	fmt.Println("stopping test...")
 
 	cancel()
 
 	wg.Wait()
+
+	fmt.Println("test stopped succesfully. Exiting...")
 }
 
-func startLedgerSimulation(
+func startLedgerBankTransfer(
 	ctx context.Context,
 	wg *sync.WaitGroup,
 	ledger *store.Ledger,
@@ -86,19 +88,13 @@ func startLedgerSimulation(
 		defer wg.Done()
 
 		for {
-			fmt.Printf("ledger %s: checking balances\n", ledger.Path())
-
 			if err := ctx.Err(); err != nil {
-				fmt.Printf("ledger %s: exit\n", ledger.Path())
-
 				break
 			}
 
-			checkBalances(ledger, numAccounts*initialBalance)
+			checkBalances(ledger, numAccounts, numAccounts*initialBalance)
 
 			time.Sleep(time.Millisecond * 10)
-
-			fmt.Printf("ledger %s: checking done\n", ledger.Path())
 		}
 	}()
 
@@ -107,21 +103,15 @@ func startLedgerSimulation(
 
 		for {
 			if err := ctx.Err(); err != nil {
-				fmt.Printf("ledger %s: exit make transfers\n", ledger.Path())
-
 				break
 			}
 
-			fmt.Printf("ledger %s: make transfers\n", ledger.Path())
-
 			makeTransfers(ledger, numAccounts)
-
-			fmt.Printf("ledger %s: make transfers done\n", ledger.Path())
 		}
 	}()
 }
 
-func checkBalances(ledger *store.Ledger, totalBalance int) {
+func checkBalances(ledger *store.Ledger, numAccounts, expectedTotalBalance int) {
 	tx, err := ledger.NewTx(context.Background(), store.DefaultTxOptions().WithMode(store.ReadOnlyTx))
 	exitOnErr(err)
 	defer tx.Cancel()
@@ -131,7 +121,8 @@ func checkBalances(ledger *store.Ledger, totalBalance int) {
 
 	defer reader.Close()
 
-	balance := uint64(0)
+	n := 0
+	totalBalance := uint64(0)
 	for {
 		_, val, err := reader.Read(context.Background())
 		if errors.Is(err, store.ErrNoMoreEntries) {
@@ -141,11 +132,16 @@ func checkBalances(ledger *store.Ledger, totalBalance int) {
 		value, err := ledger.Resolve(val)
 		exitOnErr(err)
 
-		balance += binary.BigEndian.Uint64(value)
+		totalBalance += binary.BigEndian.Uint64(value)
+		n++
 	}
 
-	if balance != uint64(totalBalance) {
-		panic(fmt.Sprintf("total balance should be %d, but is %d", balance, totalBalance))
+	if numAccounts != n {
+		panic(fmt.Sprintf("num accounts should be %d, but is %d", numAccounts, n))
+	}
+
+	if totalBalance != uint64(expectedTotalBalance) {
+		panic(fmt.Sprintf("total balance should be %d, but is %d", expectedTotalBalance, totalBalance))
 	}
 }
 
@@ -157,43 +153,47 @@ func makeTransfers(ledger *store.Ledger, numAccounts int) {
 		go func() {
 			defer wg.Done()
 
-			src := rand.Intn(numAccounts)
-			dst := rand.Intn(numAccounts)
-
-			srcAccount := getAccountKey(src)
-			dstAccount := getAccountKey(dst)
-
-			tx, err := ledger.NewTx(context.Background(), store.DefaultTxOptions())
-			exitOnErr(err)
-			defer tx.Cancel()
-
-			vref, err := tx.Get(context.Background(), srcAccount)
-			exitOnErr(err)
-
-			value, err := ledger.Resolve(vref)
-			exitOnErr(err)
-
-			amount := uint64(1 + rand.Intn(10))
-
-			err = tx.Set(srcAccount, nil, addValue(value, -int64(amount)))
-			exitOnErr(err)
-
-			vref, err = tx.Get(context.Background(), dstAccount)
-			exitOnErr(err)
-
-			value, err = ledger.Resolve(vref)
-			exitOnErr(err)
-
-			err = tx.Set(dstAccount, nil, addValue(value, int64(amount)))
-			exitOnErr(err)
-
-			_, err = tx.Commit(context.Background())
-			if !errors.Is(err, store.ErrTxReadConflict) {
-				exitOnErr(err)
-			}
+			makeTransfer(ledger, numAccounts)
 		}()
 	}
 	wg.Wait()
+}
+
+func makeTransfer(ledger *store.Ledger, numAccounts int) {
+	src := rand.Intn(numAccounts)
+	dst := rand.Intn(numAccounts)
+
+	srcAccount := getAccountKey(src)
+	dstAccount := getAccountKey(dst)
+
+	tx, err := ledger.NewTx(context.Background(), store.DefaultTxOptions())
+	exitOnErr(err)
+	defer tx.Cancel()
+
+	vref, err := tx.Get(context.Background(), srcAccount)
+	exitOnErr(err)
+
+	value, err := ledger.Resolve(vref)
+	exitOnErr(err)
+
+	amount := uint64(1 + rand.Intn(10))
+
+	err = tx.Set(srcAccount, nil, addValue(value, ^(amount-1)))
+	exitOnErr(err)
+
+	vref, err = tx.Get(context.Background(), dstAccount)
+	exitOnErr(err)
+
+	value, err = ledger.Resolve(vref)
+	exitOnErr(err)
+
+	err = tx.Set(dstAccount, nil, addValue(value, amount))
+	exitOnErr(err)
+
+	_, err = tx.Commit(context.Background())
+	if !errors.Is(err, store.ErrTxReadConflict) {
+		exitOnErr(err)
+	}
 }
 
 func createAccounts(ledger *store.Ledger, n int, initialBalance int) {
@@ -217,13 +217,13 @@ func getAccountKey(i int) []byte {
 	return fmt.Appendf(nil, "account-%d", i)
 }
 
-func addValue(v []byte, x int64) []byte {
+func addValue(v []byte, x uint64) []byte {
 	balance := binary.BigEndian.Uint64(v)
 
 	var buf [8]byte
 
-	newBalance := int64(balance) + int64(x)
-	binary.BigEndian.PutUint64(buf[:], uint64(newBalance))
+	newBalance := balance + x
+	binary.BigEndian.PutUint64(buf[:], newBalance)
 
 	return buf[:]
 }
